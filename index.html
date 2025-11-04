@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Atom</title>
+  <meta name="description" content="Proyecto escolar de robot estilo Apple: diseño 3D, electrónica y armado." />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <style>
+    /* ===== Reset + tokens ===== */
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{margin:0;padding:0}
+    :root{
+      --bg:#fff; --text:#111; --muted:#6e6e73; --link:#06c; --link-hover:#0071e3;
+      --panel:#f5f5f7; --panel-2:#1d1d1f; --accent:#0071e3;
+      --max:980px; --radius:22px; --shadow:0 10px 30px rgba(0,0,0,.08);
+    }
+    @media (prefers-color-scheme: dark){
+      :root{ --bg:#000; --text:#f5f5f7; --muted:#a1a1a6; --panel:#111; --panel-2:#000 }
+    }
+    body{
+      font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+      background:var(--bg); color:var(--text); line-height:1.4; overflow-x:hidden;
+    }
+    a{color:var(--link); text-decoration:none}
+    a:hover{color:var(--link-hover); text-decoration:underline}
+
+    /* ===== Global nav (centrada) ===== */
+    .nav{position:sticky; top:0; z-index:50; backdrop-filter:saturate(180%) blur(20px);
+      background:rgba(255,255,255,.82); border-bottom:1px solid rgba(128,128,128,.15)}
+    @media (prefers-color-scheme: dark){ .nav{ background:rgba(0,0,0,.6) } }
+    .nav-inner{max-width:var(--max); margin:0 auto; display:flex; align-items:center; justify-content:center; padding:10px 16px; position:relative}
+    .menu-toggle{display:none; background:none; border:0; padding:6px; cursor:pointer; position:absolute; left:12px; top:8px}
+    .menu-toggle svg{width:22px; height:22px; fill:var(--text); opacity:.9}
+    .links{list-style:none; display:flex; gap:22px; margin:0 auto; padding:0; align-items:center; justify-content:center}
+    .links a{color:var(--text); font-size:14px; text-decoration:none}
+    @media (max-width:900px){
+      .menu-toggle{display:inline-flex}
+      .links{
+        position:fixed; top:52px; left:0; right:0;
+        display:none; flex-direction:column; gap:0;
+        background:var(--bg); border-top:1px solid rgba(128,128,128,.15)
+      }
+      .links.open{display:flex}
+      .links li{width:100%}
+      .links a{display:block; padding:14px 18px; border-bottom:1px solid rgba(128,128,128,.12)}
+    }
+
+    /* ===== Hero / secciones ===== */
+    .hero{position:relative; display:grid; place-items:center; text-align:center; padding:80px 16px; overflow:hidden}
+    .hero h1{font-size:64px; letter-spacing:-.02em; line-height:1.05; margin:0 0 10px}
+    .hero p.lead{font-size:21px; color:var(--muted); margin:0 0 18px}
+    .cta{display:inline-flex; gap:14px}
+    .btn{display:inline-flex; align-items:center; justify-content:center; height:38px; padding:0 16px; border-radius:999px; border:1px solid transparent; font-weight:600; font-size:14px; text-decoration:none}
+    .btn.fill{background:var(--accent); color:#fff}
+    .btn.ghost{border-color:rgba(128,128,128,.3); color:var(--text)}
+    .btn:hover{text-decoration:none; transform:translateY(-1px)}
+    .hero--light{background:var(--panel)}
+    .hero--dark{background:#000; color:#f5f5f7}
+    .hero--dark .lead{color:#c0c0c3}
+    .hero-media{width:min(1200px,100%); max-height:560px; aspect-ratio:16/9; border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); margin-top:24px; position:relative}
+
+    /* ===== HERO CAROUSEL (encabezado) ===== */
+    .hero-carousel{ position:absolute; inset:0; width:100%; height:100% }
+    .hero-carousel .hc-slide{
+      position:absolute; inset:0; width:100%; height:100%;
+      object-fit:cover; object-position:center;
+      opacity:0; visibility:hidden; transition: opacity .5s ease, visibility .5s ease, transform .5s ease, filter .35s ease;
+      transform: scale(1.02); display:block;
+      filter: grayscale(100%) saturate(.65) contrast(1.02);
+    }
+    .hero-carousel .hc-slide.is-active{ opacity:1; visibility:visible; transform: scale(1.0) }
+    .hero-carousel:hover .hc-slide.is-active{ filter: none; }
+    .hero-carousel .hc-slide.is-colored{ filter: none !important; }
+
+    .hero-carousel .hc-dots{
+      position:absolute; left:0; right:0; bottom:12px; display:flex; gap:10px; justify-content:center; z-index:3; pointer-events:auto;
+    }
+    .hero-carousel .hc-dot{
+      width:12px; height:12px; border-radius:50%; border:0; cursor:pointer;
+      background:rgba(255,255,255,.5); outline:2px solid rgba(0,0,0,.25); outline-offset:2px; transition: transform .15s ease, background .15s ease;
+    }
+    .hero-carousel .hc-dot:hover{ transform: scale(1.1) }
+    .hero-carousel .hc-dot.is-active{ background:#fff }
+    @media (prefers-color-scheme: dark){
+      .hero-carousel .hc-dot{ background:rgba(255,255,255,.35); outline-color:rgba(255,255,255,.25) }
+      .hero-carousel .hc-dot.is-active{ background:#f5f5f7 }
+    }
+    .hero-media.is-contain{ aspect-ratio:16/9; min-height:clamp(240px, 56vw, 70vh); background:#000 }
+    .hero-media.is-contain .hc-slide{ object-fit:contain; background:#000 }
+    .hc-view{
+      position:absolute; left:12px; bottom:12px; z-index:4; border:0; border-radius:999px; padding:8px 12px; font-weight:600;
+      background:rgba(255,255,255,.9); color:#000; cursor:pointer; box-shadow:0 6px 18px rgba(0,0,0,.25);
+    }
+    @media (prefers-color-scheme: dark){ .hc-view{ background:rgba(0,0,0,.7); color:#f5f5f7 } }
+    .hc-view:focus{ outline:2px solid #0071e3; outline-offset:2px }
+
+    /* ===== Equipo (grilla 6) ===== */
+.team {
+  max-width: var(--max);
+  margin: 32px auto;
+  padding: 0 16px;
+}
+.team h2 {
+  font-size: 40px;
+  letter-spacing: -.02em;
+  text-align: center;
+  margin: 0 0 8px;
+}
+.team p.intro {
+  color: var(--muted);
+  text-align: center;
+  margin: 0 0 24px;
+}
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .team-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 560px) {
+  .team-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.member {
+  background: var(--panel);
+  border: 1px solid rgba(128, 128, 128, .15);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  transition: transform .25s ease;
+}
+.member:focus-within,
+.member:hover {
+  transform: translateY(-2px);
+}
+
+/* Comienza en blanco y negro (grayscale 100%) */
+.member .photo {
+  width: 100%;
+  aspect-ratio: 1/1;
+  background: linear-gradient(180deg, #e6e6e9, #cfd1d7);
+  display: grid;
+  place-items: center;
+  color: #777;
+  font-size: 14px;
+  filter: grayscale(100%); /* Blanco y negro por defecto */
+  transition: filter 0.3s ease; /* Transición suave para pasar de blanco y negro a color */
+}
+
+/* Cuando se hace hover, pasa a color */
+.member:hover .photo {
+  filter: grayscale(0); /* Vuelve a color */
+}
+
+@media (prefers-color-scheme: dark) {
+  .member .photo {
+    background: linear-gradient(180deg, #0f0f12, #18181c);
+    color: #aaa;
+  }
+}
+.member img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.member .info {
+  padding: 14px 16px;
+}
+.member .name {
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+.member .role {
+  margin: 0;
+  color: #6e6e73;
+}
+
+
+    /* ===== Proceso base ===== */
+    .process-section{padding:80px 16px; position:relative; overflow:hidden; min-height:60vh}
+    .process-wrap{max-width:var(--max); margin:0 auto; display:grid; grid-template-columns:1.05fr 1fr; gap:clamp(16px,3vw,32px); align-items:center; position:relative; z-index:2}
+    @media (max-width:900px){ .process-wrap{grid-template-columns:1fr} }
+    .bullets{margin:16px 0 0; padding:0; list-style:none; display:grid; gap:10px}
+    .bullets li{position:relative; padding-left:18px; color:var(--muted)}
+    .bullets li::before{content:""; position:absolute; left:2px; top:.55rem; width:.5rem; height:.5rem; border-radius:50%; background:currentColor; opacity:.6}
+
+    /* ===== Fondo carrusel (Diseño 3D) ===== */
+    #proceso-diseno3d .bg-scrim{ position:absolute; inset:0; z-index:1; background:linear-gradient(180deg, rgba(0,0,0,.45), rgba(0,0,0,.15)); pointer-events:none }
+    #proceso-diseno3d .bg-carousel{ position:absolute; inset:0; z-index:0 }
+    .gc-viewport{ position: relative; overflow: hidden; width:100%; height:100% }
+    .gc-track{ display:flex; width:100%; height:100%; transition: transform .6s ease; will-change: transform }
+    .gc-slide{ min-width:100%; height:100% }
+    .gc-slide img{ width:100%; height:100%; object-fit:cover; display:block }
+    .gc-dots{ position:absolute; left:0; right:0; bottom:14px; display:flex; gap:10px; justify-content:center; z-index:2 }
+    .gc-dot{ width:14px; height:14px; border-radius:50%; border:0; cursor:pointer; background:rgba(0,0,0,.45); outline:2px solid rgba(255,255,255,.35); outline-offset:2px; transition: transform .15s ease, background .15s ease }
+    .gc-dot:hover{ transform: scale(1.1) }
+    .gc-dot.is-active{ background:#111 }
+
+    /* ===== COMPETENCIAS ===== */
+    .comp-container{ max-width:var(--max); width:100%; margin:24px auto 0; position:relative }
+    .comp-viewport{ overflow:hidden; border-radius:var(--radius); box-shadow:var(--shadow) }
+    .comp-track{ display:flex; transition: transform .6s cubic-bezier(.22,.61,.36,1); will-change:transform }
+    .comp-slide{ min-width:100%; padding:0; display:flex; flex-direction:column; background:var(--panel); border:1px solid rgba(128,128,128,.15) }
+    .comp-media{ width:100%; aspect-ratio:16/9; background:#000 }
+    .comp-media img, .comp-media video{ width:100%; height:100%; object-fit:cover; display:block }
+    .comp-body{ padding:16px; min-height:120px; color:#000; background:var(--panel) }
+    .comp-body h3{ margin:0 0 6px; font-size:20px; color:#000 }
+    .comp-body p{ margin:0; color:#000; opacity:.85 }
+    .comp-arrows{ position:absolute; inset:0; display:flex; align-items:center; justify-content:space-between; pointer-events:none; z-index:5 }
+    .comp-btn{ pointer-events:auto; border:0; width:64px; height:64px; border-radius:999px; display:grid; place-items:center; background:#fff; box-shadow:0 6px 20px rgba(0,0,0,.25); cursor:pointer; transition: transform .12s ease, box-shadow .12s ease }
+    .comp-btn:hover{ transform:translateY(-1px); box-shadow:0 10px 26px rgba(0,0,0,.3) }
+    .comp-btn svg{ width:28px; height:28px; fill:#000 }
+    .comp-btn.prev{ position:absolute; left:-20px; top:50%; transform:translate(-100%,-50%) }
+    .comp-btn.next{ position:absolute; right:-20px; top:50%; transform:translate(100%,-50%) }
+    @media (max-width:900px){ .comp-btn.prev{ left:8px; transform:translateY(-50%) } .comp-btn.next{ right:8px; transform:translateY(-50%) } }
+    .comp-indicators{ display:flex; align-items:center; justify-content:center; gap:12px; margin-top:12px; user-select:none }
+    .comp-dots{ display:flex; gap:8px }
+    .comp-dot{ width:8px; height:8px; border-radius:50%; border:0; cursor:pointer; background:rgba(0,0,0,.35) }
+    .comp-dot.is-active{ background:#111 }
+    .comp-counter{ font-size:12px; color:#6e6e73 }
+
+    /* ===== CARD SWAP ===== */
+    .card-swap-container{
+      position:absolute; bottom:0; right:0; transform: translate(5%, 20%); transform-origin: bottom right;
+      perspective: 900px; overflow: visible; width: min(520px, 44vw); height: min(340px, 28vw);
+    }
+    .card{
+      position:absolute; top:50%; left:50%; width:100%; height:100%; border-radius:12px; border:1px solid #fff; background:#000;
+      transform-style:preserve-3d; will-change:transform; backface-visibility:hidden; -webkit-backface-visibility:hidden;
+      box-shadow:0 20px 50px rgba(0,0,0,.25); overflow:hidden; cursor:pointer;
+    }
+    .card img, .card video{ width:100%; height:100%; object-fit:cover; display:block }
+
+    @media (max-width: 900px){
+      .process-wrap{grid-template-columns:1fr}
+      .card-swap-container{ position:relative; transform: none; width:100%; height:56vw; max-height:380px; margin-top:18px }
+    }
+    @media (max-width: 768px){ .card-swap-container{ transform: scale(0.75) translate(25%, 25%) } }
+    @media (max-width: 480px){ .card-swap-container{ transform: scale(0.55) translate(25%, 25%) } }
+  </style>
+</head>
+<body>
+
+  <!-- ===== Hero ===== -->
+  <section class="hero reveal" id="inicio">
+    <header>
+      <h1>Atom</h1>
+      <p class="lead">Proyecto escolar de robot “vale todo y destreza”: diseño 3D, electrónica y armado.</p>
+      <div class="cta">
+        <a class="btn fill" href="#equipo">Ver equipo</a>
+      </div>
+    </header>
+
+    <div class="hero-media is-contain">
+      <div class="hero-carousel" id="heroCarousel">
+        <img src="../robotica/imagenes/imagenes pagina/robot en pista.jpg" alt="Robot — vista 1" class="hc-slide is-active" data-focus="50% 60%">
+        <img src="../robotica/imagenes/imagenes pagina/robot en pista 2.jpg" alt="Robot — vista 2" class="hc-slide" data-focus="50% 50%">
+        <div class="hc-dots" aria-label="Paginación">
+          <button class="hc-dot is-active" aria-label="Ir a foto 1"></button>
+          <button class="hc-dot" aria-label="Ir a foto 2"></button>
+        </div>
+        <button class="hc-view" id="hcView" aria-pressed="true">Ajustar a pantalla</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Nav centrada ===== -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <button class="menu-toggle" id="menuToggle" aria-label="Menú" title="Menú">
+        <svg viewBox="0 0 24 24"><path d="M3 6h18v2H3V6Zm0 5h18v2H3v-2Zm0 5h18v2H3v-2Z"/></svg>
+      </button>
+      <ul class="links" id="navLinks">
+        <li><a href="#inicio">Inicio</a></li>
+        <li><a href="#equipo">Equipo</a></li>
+        <li><a href="#proceso-diseno3d">Diseño 3D</a></li>
+        <!-- Eliminado: Programación -->
+        <li><a href="#proceso-electronica">Electrónica</a></li>
+        <li><a href="#proceso-estructura">Armado</a></li>
+        <li><a href="#evento">Evento</a></li>
+        <li><a href="#competencia">Competencia</a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ===== Equipo ===== -->
+  <section class="team reveal" id="equipo">
+    <h2>Equipo</h2>
+    <p class="intro">Seis integrantes — fotos y <em>roles</em> asignados.</p>
+    <div class="team-grid">
+      <article class="member" tabindex="0"><div class="photo"><img src="../robotica/imagenes/gordo.jpg" alt="Gonzalo Ferrero"></div><div class="info"><p class="name">Gonzalo Ferrero</p><p class="role">Rol: Programación y electrónica</p></div></article>
+      <article class="member" tabindex="0"><div class="photo"><img src="../robotica/imagenes/luana.jpg" alt="Luana Beltramone"></div><div class="info"><p class="name">Luana Beltramone</p><p class="role">Rol: Notariado y colaboración</p></div></article>
+      <article class="member" tabindex="0"><div class="photo"><img src="../robotica/imagenes/lucho.jpg" alt="Luciano Albarracin"></div><div class="info"><p class="name">Luciano Albarracin</p><p class="role">Rol: Programación</p></div></article>
+      <article class="member" tabindex="0"><div class="photo"><img src="../robotica/imagenes/pp.jpg" alt="Pedro Cabezas"></div><div class="info"><p class="name">Pedro Cabezas</p><p class="role">Rol: Diseño 3d, Programación</p></div></article>
+      <article class="member" tabindex="0"><div class="photo"><img src="../robotica/imagenes/pancho.jpg" alt="Francisco Farias"></div><div class="info"><p class="name">Francisco Farias</p><p class="role">Rol: Electrónica</p></div></article>
+      <article class="member" tabindex="0"><div class="photo"><img src="../robotica/imagenes/spa.jpg" alt="Thomas Spalletti"></div><div class="info"><p class="name">Thomas Spalletti</p><p class="role">Rol: Electrónica</p></div></article>
+    </div>
+  </section>
+
+  <!-- ===== Proceso: Diseño 3D (fondo con carrusel auto) ===== -->
+  <section class="process-section reveal" id="proceso-diseno3d">
+    <div class="bg-carousel" id="galeria-diseno3d-bg">
+      <div class="gc-viewport">
+        <div class="gc-track">
+          <figure class="gc-slide"><img src="../robotica/imagenes/imagenes pagina/pe.jpg" alt="Fondo 1"></figure>
+          <figure class="gc-slide"><img src="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=2000&auto=format&fit=crop" alt="Fondo 2"></figure>
+          <figure class="gc-slide"><img src="../robotica/imagenes/imagenes pagina/IMG_0783.jpg" alt="Fondo 3"></figure>
+          <figure class="gc-slide"><img src="../robotica/imagenes/imagenes pagina/top.jpg" alt="Fondo 4"></figure>
+          <figure class="gc-slide"><img src="../robotica/imagenes/imagenes pagina/trac.jpg" alt="Fondo 5"></figure>
+        </div>
+      </div>
+      <div class="gc-dots" aria-label="Paginación fondo Diseño 3D"></div>
+    </div>
+    <div class="bg-scrim"></div>
+
+    <div class="process-wrap">
+      <div style="color:#fff">
+        <span class="kicker" style="color:#e0e0e5; font-size:12px; letter-spacing:.08em; text-transform:uppercase">Proceso</span>
+        <h2 class="title" style="font-size:40px; letter-spacing:-.02em; margin:.2rem 0 .6rem">Diseño 3D</h2>
+        <p class="copy" style="color:#e6e6ea">Estructura optimizada por peso (&lt; 500 g), rigidez y protección de componentes.</p>
+        <ul class="bullets" style="--muted:#d6d6dc">
+          <li>Perfil y centro de masa bajos.</li>
+          <li>Refuerzos en zonas de impacto.</li>
+          <li>Acceso rápido para mantenimiento.</li>
+        </ul>
+      </div>
+      <div></div>
+    </div>
+  </section>
+
+  <!-- ===== Proceso: Electrónica (Card Swap) ===== -->
+  <section class="process-section hero--dark reveal" id="proceso-electronica" style="background:#000; color:#f5f5f7">
+    <div class="process-wrap">
+      <div>
+        <span class="kicker" style="color:#a1a1a6; font-size:12px; letter-spacing:.08em; text-transform:uppercase">Proceso</span>
+        <h2 class="title" style="font-size:40px; letter-spacing:-.02em; margin:.2rem 0 .6rem">Electrónica</h2>
+        <p class="copy" style="color:#c0c0c3">Integración de 4 motores DC mediante L298, alimentación segura y gestión térmica.</p>
+        <ul class="bullets">
+          <li>Arduino + puente H L298.</li>
+          <li>Cableado ordenado y conectores asegurados.</li>
+          <li>Protección de batería y fusibles.</li>
+        </ul>
+      </div>
+      <div class="process-visual" style="position:relative; min-height:340px">
+        <div class="card-swap-container" id="cards-electronica">
+          <figure class="card"><img src="../robotica/imagenes/imagenes pagina/pitu.jpg" alt="Electrónica 1"></figure>
+          <figure class="card"><img src="../robotica/imagenes/imagenes pagina/spa viendo.jpg" alt="Electrónica 2"></figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Proceso: Armado (Card Swap con VIDEO) ===== -->
+  <section class="process-section reveal" id="proceso-estructura">
+    <div class="process-wrap">
+      <div>
+        <span class="kicker" style="color:var(--muted); font-size:12px; letter-spacing:.08em; text-transform:uppercase">Proceso</span>
+        <h2 class="title" style="font-size:40px; letter-spacing:-.02em; margin:.2rem 0 .6rem">Armado de la estructura</h2>
+        <p class="copy" style="color:var(--muted)">Montaje, balance y checklist final de competencia.</p>
+        <ul class="bullets">
+          <li>Ajuste de peso final (&lt; 500 g).</li>
+          <li>Alineación de ruedas y tracción.</li>
+          <li>Chequeos de seguridad y repuestos.</li>
+        </ul>
+      </div>
+      <div class="process-visual" style="position:relative; min-height:340px">
+        <div class="card-swap-container" id="cards-armado">
+          <figure class="card">
+            <video
+              src="../robotica/imagenes/imagenes pagina/IMG_0031.mp4"
+              autoplay muted loop playsinline controls preload="metadata"></video>
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== COMPETENCIAS ===== -->
+  <section class="hero hero--dark reveal" id="competencia">
+    <header>
+      <h1>Competencias</h1>
+      <p class="lead">Participamos en <strong>“Vale Todo”</strong> y <strong>“Destreza”</strong>. Usá las flechas para avanzar/retroceder.</p>
+    </header>
+
+    <div class="comp-container">
+      <div class="comp-viewport" id="compViewport" aria-live="polite">
+        <div class="comp-track" id="compTrack">
+          <article class="comp-slide">
+            <div class="comp-media">
+              <video
+                src="../robotica/imagenes/imagenes pagina/IMG_4141.mp4"
+                poster="https://images.unsplash.com/photo-1531297484001-80022131f5a1?q=80&w=1920&auto=format&fit=crop"
+                autoplay muted playsinline loop controls preload="metadata"></video>
+            </div>
+            <div class="comp-body">
+              <h3>Pit — Preparación</h3>
+              <p>Ajustes de tracción y verificación de failsafe.</p>
+            </div>
+          </article>
+
+          <article class="comp-slide">
+            <div class="comp-media">
+              <video
+                src="../robotica/imagenes/imagenes pagina/IMG_0059.mp4"
+                autoplay muted playsinline loop controls preload="metadata"></video>
+            </div>
+            <div class="comp-body">
+              <h3>Empuje continuo</h3>
+              <p>Curvas de aceleración y control de centro de masa.</p>
+            </div>
+          </article>
+        </div>
+      </div>
+
+      <div class="comp-arrows" aria-hidden="false">
+        <button class="comp-btn prev" id="compPrev" aria-label="Anterior">
+          <svg viewBox="0 0 24 24"><path d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        </button>
+        <button class="comp-btn next" id="compNext" aria-label="Siguiente">
+          <svg viewBox="0 0 24 24"><path d="m8.59 16.59 1.41 1.41 6-6-6-6-1.41 1.41L12.17 12z"/></svg>
+        </button>
+      </div>
+
+      <div class="comp-indicators" aria-label="Paginación del carrusel">
+        <div class="comp-dots" id="compDots" role="tablist" aria-label="Puntos de página"></div>
+        <span class="comp-counter" id="compCounter" aria-live="polite">Slide 1 de 2</span>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    // Menú móvil
+    const toggle = document.getElementById('menuToggle');
+    const links = document.getElementById('navLinks');
+    toggle?.addEventListener('click', ()=> links.classList.toggle('open'));
+    links?.querySelectorAll('a').forEach(a=> a.addEventListener('click', ()=> links.classList.remove('open')));
+
+    // Reveal on scroll
+    const io = new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{ if(e.isIntersecting) e.target.classList.add('in'); })
+    },{ threshold:.16 });
+    document.querySelectorAll('.reveal').forEach(el=> io.observe(el));
+
+    // ===== Fondo Diseño 3D (auto-rotación + dots) =====
+    function initCarousel(selector, intervalMs){
+      const root = document.querySelector(selector);
+      if (!root) return;
+      const track   = root.querySelector('.gc-track');
+      const slides  = Array.from(root.querySelectorAll('.gc-slide'));
+      const dotsWrap= root.querySelector('.gc-dots');
+      if (!track || slides.length === 0 || !dotsWrap) return;
+      let i = 0; const n = slides.length; const ms = intervalMs || 5000;
+      dotsWrap.innerHTML = '';
+      for (let k = 0; k < n; k++) {
+        const b = document.createElement('button');
+        b.className = 'gc-dot' + (k === 0 ? ' is-active' : '');
+        b.addEventListener('click', () => { i = k; update(); restart(); });
+        dotsWrap.appendChild(b);
+      }
+      const dots = Array.from(dotsWrap.children);
+      function update(){ track.style.transform = `translateX(-${i*100}%)`; dots.forEach((d,idx)=> d.classList.toggle('is-active', idx===i)); }
+      function next(){ i = (i+1)%n; update(); }
+      let timer=null; function start(){ timer=setInterval(next, ms); } function stop(){ if(timer) clearInterval(timer); }
+      function restart(){ stop(); start(); }
+      const viewport = root.querySelector('.gc-viewport');
+      viewport.addEventListener('mouseenter', stop);
+      viewport.addEventListener('mouseleave', start);
+      update(); start();
+    }
+
+    // ===== Igualar alturas (competencias) =====
+    function equalizeHeights(selector){
+      const nodes = Array.from(document.querySelectorAll(selector));
+      if(!nodes.length) return;
+      nodes.forEach(n => n.style.minHeight = '');
+      const max = Math.max(...nodes.map(n => n.offsetHeight));
+      nodes.forEach(n => n.style.minHeight = max + 'px');
+    }
+
+    // ===== Carrusel Competencias (controla videos) =====
+    function initCompetencias(){
+      const track = document.getElementById('compTrack');
+      const prev = document.getElementById('compPrev');
+      const next = document.getElementById('compNext');
+      const viewport = document.getElementById('compViewport');
+      const slides = Array.from(track.querySelectorAll('.comp-slide'));
+      const dotsWrap = document.getElementById('compDots');
+      const counter = document.getElementById('compCounter');
+      if(!track || !prev || !next || !slides.length || !dotsWrap || !counter) return;
+
+      equalizeHeights('.comp-body');
+
+      dotsWrap.innerHTML = '';
+      slides.forEach((_, idx) => {
+        const b = document.createElement('button');
+        b.className = 'comp-dot' + (idx===0 ? ' is-active' : '');
+        b.setAttribute('role','tab');
+        b.setAttribute('aria-label', `Ir al slide ${idx+1}`);
+        b.addEventListener('click', ()=> go(idx));
+        dotsWrap.appendChild(b);
+      });
+      const dots = Array.from(dotsWrap.children);
+
+      let index = 0; const n = slides.length;
+
+      function updateButtons(){ prev.disabled = index === 0; next.disabled = index === n - 1; }
+      function updateDots(){
+        dots.forEach((d, i) => d.classList.toggle('is-active', i===index));
+        counter.textContent = `Slide ${index+1} de ${n}`;
+      }
+      function handleVideoPlayback(){
+        slides.forEach(s=>{
+          const v = s.querySelector('video');
+          if(v) { try{ v.pause(); }catch(_){} }
+        });
+        const v = slides[index].querySelector('video');
+        if(v){ v.muted = true; v.play().catch(()=>{}); }
+      }
+      function go(i){
+        index = Math.max(0, Math.min(n-1, i));
+        track.style.transform = `translateX(-${index*100}%)`;
+        updateButtons(); updateDots(); handleVideoPlayback();
+      }
+      prev.addEventListener('click', ()=> go(index-1));
+      next.addEventListener('click', ()=> go(index+1));
+      viewport.setAttribute('tabindex','0');
+      viewport.addEventListener('keydown', (e)=>{ if(e.key==='ArrowLeft'){ e.preventDefault(); go(index-1);} if(e.key==='ArrowRight'){ e.preventDefault(); go(index+1);} });
+      window.addEventListener('resize', ()=> requestAnimationFrame(()=> equalizeHeights('.comp-body')));
+      go(0);
+    }
+
+    // ===== CARD SWAP =====
+    function initCardSwap(containerSel){
+      const root = document.querySelector(containerSel);
+      if(!root) return;
+      const cards = Array.from(root.querySelectorAll('.card'));
+      if(cards.length === 0) return;
+
+      const tilt = 6, scaleStep = 0.04;
+
+      function layout(){
+        cards.forEach((card, i)=>{
+          const z = cards.length - i;
+          const tx = -50 + i*0.8;
+          const ty = -50 - i*0.8;
+          const rz = (i%2 ? -tilt : tilt) * 0.6;
+          const s  = 1 - i*scaleStep;
+          card.style.transform = `translate(-50%, -50%) translateZ(${z}px) translate(${tx}px, ${ty}px) rotateZ(${rz}deg) scale(${s})`;
+          card.style.zIndex = String(100 - i);
+          card.style.opacity = 1 - i*0.04;
+        });
+      }
+
+      function bringTopToBack(){
+        const first = cards.shift();
+        cards.push(first);
+        root.appendChild(first);
+        layout();
+      }
+
+      cards.forEach(c=>{
+        c.addEventListener('click', bringTopToBack);
+        c.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); bringTopToBack(); }});
+        c.setAttribute('tabindex','0');
+        c.setAttribute('role','button');
+        c.setAttribute('aria-label','Siguiente imagen');
+      });
+
+      let sx=0, dx=0;
+      root.addEventListener('touchstart', e=>{ sx = e.touches[0].clientX; });
+      root.addEventListener('touchmove',  e=>{ dx = e.touches[0].clientX - sx; });
+      root.addEventListener('touchend',   ()=>{ if(Math.abs(dx)>30) bringTopToBack(); sx=dx=0; });
+
+      layout();
+    }
+
+    // ===== HERO CAROUSEL (con “ver completa” + foco + BN→Color) =====
+    function initHeroCarousel(rootSel, intervalMs){
+      const root = document.querySelector(rootSel);
+      if(!root) return;
+
+      const media = root.closest('.hero-media');
+      const slides = Array.from(root.querySelectorAll('.hc-slide'));
+      if(slides.length === 0) return;
+
+      slides.forEach(s => { const pos = s.dataset.focus; if(pos) s.style.objectPosition = pos; });
+
+      // Dots
+      let dotsWrap = root.querySelector('.hc-dots');
+      if(!dotsWrap){
+        dotsWrap = document.createElement('div');
+        dotsWrap.className = 'hc-dots';
+        root.appendChild(dotsWrap);
+      }
+      if(dotsWrap.children.length !== slides.length){
+        dotsWrap.innerHTML = '';
+        slides.forEach((_,i)=>{
+          const b = document.createElement('button');
+          b.className = 'hc-dot' + (i===0 ? ' is-active' : '');
+          b.setAttribute('aria-label', `Ir a foto ${i+1}`);
+          dotsWrap.appendChild(b);
+        });
+      }
+      const dotBtns = Array.from(root.querySelectorAll('.hc-dot'));
+
+      // Botón ver completa / ajustar
+      const viewBtn = root.querySelector('#hcView');
+      function setContain(on){
+        media.classList.toggle('is-contain', on);
+        if(viewBtn){
+          viewBtn.setAttribute('aria-pressed', String(on));
+          viewBtn.textContent = on ? 'Ajustar a pantalla' : 'Ver completa';
+        }
+      }
+      viewBtn?.addEventListener('click', ()=> setContain(!media.classList.contains('is-contain')));
+
+      // Cambio de slide
+      let i = 0, n = slides.length, ms = intervalMs || 4500, timer = null;
+      function setActive(idx){
+        slides.forEach((s,k)=> {
+          s.classList.toggle('is-active', k===idx);
+          if(k!==idx) s.classList.remove('is-colored');
+        });
+        dotBtns.forEach((d,k)=> d.classList.toggle('is-active', k===idx));
+      }
+      function next(){ i = (i+1)%n; setActive(i); }
+      function go(k){ i = k; setActive(i); restart(); }
+      function start(){ timer = setInterval(next, ms); }
+      function stop(){ if(timer) clearInterval(timer); timer = null; }
+      function restart(){ stop(); start(); }
+
+      dotBtns.forEach((b,idx)=> b.addEventListener('click', ()=> go(idx)));
+      root.addEventListener('mouseenter', stop);
+      root.addEventListener('mouseleave', start);
+
+      // Teclado
+      root.setAttribute('tabindex','0');
+      root.addEventListener('keydown', (e)=>{
+        if(e.key==='ArrowRight'){ e.preventDefault(); next(); restart(); }
+        if(e.key==='ArrowLeft'){ e.preventDefault(); i = (i-1+n)%n; setActive(i); restart(); }
+      });
+
+      // Swipe móvil
+      let sx=0, dx=0;
+      root.addEventListener('touchstart', e=>{ sx=e.touches[0].clientX; });
+      root.addEventListener('touchmove',  e=>{ dx = e.touches[0].clientX - sx; });
+      root.addEventListener('touchend',   ()=>{
+        if(Math.abs(dx)>30){
+          if(dx<0) next(); else { i=(i-1+n)%n; setActive(i); }
+          restart();
+        }
+        sx=dx=0;
+      });
+
+      // Tap-to-toggle BN→Color en la slide activa
+      root.addEventListener('click', (e)=>{
+        if(e.target.classList.contains('hc-dot') || e.target.id==='hcView') return;
+        const active = root.querySelector('.hc-slide.is-active');
+        if(!active) return;
+        active.classList.toggle('is-colored');
+      });
+
+      setContain(true);
+      setActive(0);
+      start();
+    }
+
+    // ===== Iniciar todo =====
+    document.addEventListener('DOMContentLoaded', () => {
+      initCarousel('#galeria-diseno3d-bg', 5000);
+      initCompetencias();
+      initCardSwap('#cards-armado');
+      initCardSwap('#cards-electronica');
+      initHeroCarousel('#heroCarousel', 4500);
+    });
+  </script>
+</body>
+</html>
